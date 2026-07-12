@@ -3,11 +3,14 @@ from pathlib import Path
 from PIL import Image, UnidentifiedImageError
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from apps.annotations.models import UploadedImage
-from apps.annotations.serializers import UploadedImageSerializer
+from apps.annotations.models import PolygonAnnotation, UploadedImage
+from apps.annotations.serializers import (
+    PolygonAnnotationSerializer,
+    UploadedImageSerializer,
+)
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
@@ -20,13 +23,15 @@ class ImageViewSet(
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
-    """List, upload, retrieve, and delete images owned by the current user."""
+    """List, upload, retrieve, delete, and annotate the user's images."""
 
     serializer_class = UploadedImageSerializer
-    parser_classes = (MultiPartParser, FormParser)
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
 
     def get_queryset(self):
-        return UploadedImage.objects.filter(user=self.request.user)
+        return UploadedImage.objects.filter(user=self.request.user).prefetch_related(
+            "polygons"
+        )
 
     @action(detail=False, methods=("post",), url_path="upload")
     def upload(self, request):
@@ -81,6 +86,21 @@ class ImageViewSet(
             response["X-Upload-Warnings"] = " | ".join(errors)
         return response
 
+    @action(detail=True, methods=("get", "post"), url_path="polygons")
+    def polygons(self, request, pk=None):
+        """List or create polygons for one image owned by the current user."""
+
+        image = self.get_object()
+
+        if request.method == "GET":
+            serializer = PolygonAnnotationSerializer(image.polygons.all(), many=True)
+            return Response(serializer.data)
+
+        serializer = PolygonAnnotationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(image=image)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
     def perform_destroy(self, instance):
         storage = instance.image.storage
         stored_name = instance.image.name
@@ -113,3 +133,20 @@ class ImageViewSet(
             return "the file is not a valid image."
 
         return None
+
+
+class PolygonAnnotationViewSet(
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Retrieve, update, or delete polygons owned through the parent image."""
+
+    serializer_class = PolygonAnnotationSerializer
+    queryset = PolygonAnnotation.objects.none()
+
+    def get_queryset(self):
+        return PolygonAnnotation.objects.filter(
+            image__user=self.request.user
+        ).select_related("image")

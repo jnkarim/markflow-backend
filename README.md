@@ -13,10 +13,11 @@ Backend API for **MarkFlow**, a two-in-one productivity application combining da
 - JPG, PNG, and WEBP validation
 - User-isolated image listing, retrieval, and deletion
 - Image metadata persistence through Django ORM
+- Normalized polygon annotation creation, listing, editing, and deletion
+- User-isolated annotation access through parent image ownership
 - SQLite development database
 - Public health-check endpoint
 
-Polygon drawing data is intentionally added in the next focused branch.
 
 ## Stack
 
@@ -117,6 +118,40 @@ curl.exe -X POST "http://127.0.0.1:8000/api/images/upload/" `
   -F "files=@C:\path\second.jpg"
 ```
 
+## Polygon annotation endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/images/{image_id}/polygons/` | List polygons saved on one owned image |
+| `POST` | `/api/images/{image_id}/polygons/` | Save a polygon on one owned image |
+| `GET` | `/api/polygons/{id}/` | Retrieve one owned polygon |
+| `PATCH` | `/api/polygons/{id}/` | Update one owned polygon |
+| `DELETE` | `/api/polygons/{id}/` | Delete one owned polygon |
+
+Polygon points are stored as normalized values between `0` and `1`, allowing the frontend canvas to resize without moving annotations away from their intended image regions.
+
+Example request:
+
+```json
+{
+  "label": "Product",
+  "color": "#FF8A00",
+  "points": [
+    {"x": 0.12, "y": 0.18},
+    {"x": 0.74, "y": 0.20},
+    {"x": 0.58, "y": 0.82}
+  ]
+}
+```
+
+Validation rules:
+
+- At least three distinct points
+- Maximum 200 points per polygon
+- Every coordinate must be between `0` and `1`
+- Colors must use six-digit hexadecimal format
+- Images and polygons are available only to their owning user
+
 ## Tests
 
 Run the current backend suite:
@@ -125,11 +160,11 @@ Run the current backend suite:
 python manage.py test apps.accounts apps.tasks apps.annotations
 ```
 
-The current suite covers authentication, task CRUD and reordering, image validation, multiple uploads, user isolation, and protected deletion.
+The current suite covers authentication, task CRUD and reordering, image validation, multiple uploads, polygon validation and persistence, user isolation, and protected deletion.
 
 ## Development workflow
 
-The project is developed through focused branches and pull requests. Polygon annotation persistence, broader tests, and deployment documentation are added separately.
+The project is developed through focused branches and pull requests. Broader integration tests and deployment documentation are added in later focused branches.
 
 ## License
 

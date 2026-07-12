@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from apps.annotations.models import UploadedImage
+from apps.annotations.models import PolygonAnnotation, UploadedImage
 
 
 @admin.register(UploadedImage)
@@ -22,3 +22,11 @@ class UploadedImageAdmin(admin.ModelAdmin):
         "uploaded_at",
         "updated_at",
     )
+
+
+@admin.register(PolygonAnnotation)
+class PolygonAnnotationAdmin(admin.ModelAdmin):
+    list_display = ("label", "image", "color", "created_at")
+    list_filter = ("created_at", "color")
+    search_fields = ("label", "image__original_name", "image__user__email")
+    readonly_fields = ("created_at", "updated_at")
