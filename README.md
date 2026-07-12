@@ -1,61 +1,149 @@
 # MarkFlow Backend
 
-Backend API for **MarkFlow**, a two-in-one productivity application combining date-based Kanban task management with image annotation.
+Django REST API for **MarkFlow** — a two-in-one productivity application that combines date-based Kanban task management with polygon image annotation.
 
-## Current capabilities
+> **Tagline:** Plan the work. Mark the details.
 
-- Django and Django REST Framework foundation
-- Custom email-based user model
+## Repository links
+
+Add these after deployment:
+
+- Frontend repository: `https://github.com/<username>/markflow-frontend`
+- Backend repository: `https://github.com/<username>/markflow-backend`
+- Hosted frontend: `https://<project>.vercel.app`
+- Hosted backend: `https://<username>.pythonanywhere.com`
+
+## Features
+
+### Authentication
+
+- Custom Django user model with email as the login identifier
 - JWT access and refresh tokens
-- Date-based task CRUD with user-owned tags
-- Transaction-safe task reordering within and between Kanban columns
-- Authenticated multiple-image uploads
-- JPG, PNG, and WEBP validation
-- User-isolated image listing, retrieval, and deletion
-- Image metadata persistence through Django ORM
-- Normalized polygon annotation creation, listing, editing, and deletion
-- User-isolated annotation access through parent image ownership
-- SQLite development database
-- Public health-check endpoint
+- Authenticated current-user endpoint
+- Refresh-token blacklisting on logout
+- Seed command for the recruiter demo account
 
+### Date-based Kanban tasks
 
-## Stack
+- `To Do`, `In Progress`, and `Done` states
+- Separate task date and due date
+- Priority, description, tags, and column position
+- Date-filtered task listing
+- User-owned task and tag data
+- Transaction-safe same-column and cross-column reordering
 
-- Python 3.11+
-- Django 5.2 LTS
-- Django REST Framework
-- Simple JWT
-- Pillow
-- Django ORM
-- SQLite for local development and the assignment demo
+### Image annotation
+
+- Multiple JPG, PNG, and WEBP uploads
+- Image metadata stored through Django ORM
+- User-isolated image listing and deletion
+- Polygon creation, listing, editing, and deletion
+- Normalized coordinates that survive responsive canvas resizing
+- Validation for image size, format, point count, coordinates, label, and color
+
+## Technology and runtime versions
+
+| Area | Technology |
+|---|---|
+| Backend runtime | Python 3.11 |
+| Framework | Django 5.2 LTS |
+| API toolkit | Django REST Framework 3.17 |
+| Authentication | Simple JWT 5.5 |
+| Image processing | Pillow 11.3 |
+| Database | SQLite through Django ORM |
+| Static files | WhiteNoise |
+| CI | GitHub Actions |
+| Companion frontend runtime | Node.js 20 LTS or newer |
+
+The backend itself does not require Node.js. Node is listed because the assignment also contains a Next.js frontend in a separate repository.
+
+## Project structure
+
+```text
+markflow-backend/
+├── apps/
+│   ├── accounts/       # Email user model, JWT profile/logout, demo user
+│   ├── tasks/          # Tasks, tags, date filtering, board reordering
+│   └── annotations/    # Image uploads and polygon annotations
+├── config/             # Django settings, URL routing, WSGI and ASGI
+├── docs/
+│   ├── API.md
+│   ├── ARCHITECTURE.md
+│   ├── CHALLENGES.md
+│   └── DEPLOYMENT.md
+├── .github/workflows/  # Automated backend checks
+├── .env.example
+├── manage.py
+└── requirements.txt
+```
 
 ## Local setup
 
-Create and activate a virtual environment:
+### 1. Clone and enter the repository
 
 ```bash
-python -m venv .venv
+git clone https://github.com/<username>/markflow-backend.git
+cd markflow-backend
 ```
+
+### 2. Create a virtual environment
 
 Windows PowerShell:
 
 ```powershell
+py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-Install dependencies:
+macOS or Linux:
+
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Install dependencies
 
 ```bash
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-Apply migrations, create the demo user, and start the server:
+### 4. Set environment variables
+
+MarkFlow reads **process environment variables**. `.env.example` is a template; Django does not load it automatically.
+
+Windows PowerShell:
+
+```powershell
+$env:DJANGO_SECRET_KEY = "replace-with-a-long-random-development-secret"
+$env:DJANGO_DEBUG = "True"
+$env:DJANGO_ALLOWED_HOSTS = "127.0.0.1,localhost"
+$env:CORS_ALLOWED_ORIGINS = "http://localhost:3000"
+$env:CSRF_TRUSTED_ORIGINS = "http://localhost:3000"
+```
+
+macOS or Linux:
+
+```bash
+export DJANGO_SECRET_KEY="replace-with-a-long-random-development-secret"
+export DJANGO_DEBUG=True
+export DJANGO_ALLOWED_HOSTS="127.0.0.1,localhost"
+export CORS_ALLOWED_ORIGINS="http://localhost:3000"
+export CSRF_TRUSTED_ORIGINS="http://localhost:3000"
+```
+
+Generate a random key with:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+### 5. Prepare the database and demo account
 
 ```bash
 python manage.py migrate
 python manage.py seed_demo
-python manage.py runserver
 ```
 
 Demo credentials:
@@ -65,107 +153,97 @@ Email: demo@markflow.app
 Password: MarkFlow123!
 ```
 
-## Authentication endpoints
+The credentials are intended only for the public assignment demo. Use different credentials for any real application.
 
-| Method | Endpoint | Purpose |
+### 6. Run the API
+
+```bash
+python manage.py runserver
+```
+
+Check:
+
+```text
+http://127.0.0.1:8000/api/health/
+```
+
+Expected response:
+
+```json
+{
+  "status": "ok",
+  "service": "markflow-backend"
+}
+```
+
+## Environment variables
+
+| Variable | Development example | Purpose |
 |---|---|---|
-| `POST` | `/api/auth/token/` | Exchange email and password for JWT tokens |
-| `POST` | `/api/auth/token/refresh/` | Refresh an access token |
-| `GET` | `/api/auth/me/` | Return the authenticated user |
-| `POST` | `/api/auth/logout/` | Blacklist a refresh token |
-| `GET` | `/api/health/` | Public hosting health check |
+| `DJANGO_SECRET_KEY` | long random value | Django and JWT signing secret |
+| `DJANGO_DEBUG` | `True` | Enables development diagnostics |
+| `DJANGO_ALLOWED_HOSTS` | `127.0.0.1,localhost` | Comma-separated API hosts |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | Exact comma-separated frontend origins |
+| `CSRF_TRUSTED_ORIGINS` | `http://localhost:3000` | Trusted browser origins |
 
-Authenticated requests use:
+Do not add a trailing slash to an origin. Never commit a real secret or a local `.env` file.
+
+## API overview
+
+All private endpoints require:
 
 ```text
 Authorization: Bearer <access-token>
 ```
 
-## Task endpoints
+| Area | Main endpoints |
+|---|---|
+| Health | `GET /api/health/` |
+| Authentication | `/api/auth/token/`, `/api/auth/token/refresh/`, `/api/auth/me/`, `/api/auth/logout/` |
+| Tasks | `/api/tasks/`, `/api/tasks/{id}/`, `/api/tasks/reorder/` |
+| Images | `/api/images/`, `/api/images/upload/`, `/api/images/{id}/` |
+| Polygons | `/api/images/{image_id}/polygons/`, `/api/polygons/{id}/` |
 
-| Method | Endpoint | Purpose |
-|---|---|---|
-| `GET` | `/api/tasks/?date=YYYY-MM-DD` | List tasks for a selected date |
-| `POST` | `/api/tasks/` | Create a task |
-| `GET` | `/api/tasks/{id}/` | Read one owned task |
-| `PATCH` | `/api/tasks/{id}/` | Edit one owned task |
-| `DELETE` | `/api/tasks/{id}/` | Delete one owned task |
-| `POST` | `/api/tasks/reorder/` | Move a task within or between columns |
+See [docs/API.md](docs/API.md) for request and response examples.
 
-## Image endpoints
+## Tests and quality checks
 
-| Method | Endpoint | Purpose |
-|---|---|---|
-| `GET` | `/api/images/` | List the authenticated user's images |
-| `POST` | `/api/images/upload/` | Upload one or more images using `files` |
-| `GET` | `/api/images/{id}/` | Read one owned image |
-| `DELETE` | `/api/images/{id}/` | Delete one owned image and its stored file |
-
-Upload rules for the free-tier demo:
-
-- Accepted formats: JPG, PNG, and WEBP
-- Maximum file size: 5 MB per image
-- Maximum stored images: 20 per account
-- Files are verified with Pillow before persistence
-- Stored names are randomized while original names remain in the database
-
-Example PowerShell upload request after obtaining an access token:
-
-```powershell
-curl.exe -X POST "http://127.0.0.1:8000/api/images/upload/" `
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" `
-  -F "files=@C:\path\first.png" `
-  -F "files=@C:\path\second.jpg"
-```
-
-## Polygon annotation endpoints
-
-| Method | Endpoint | Purpose |
-|---|---|---|
-| `GET` | `/api/images/{image_id}/polygons/` | List polygons saved on one owned image |
-| `POST` | `/api/images/{image_id}/polygons/` | Save a polygon on one owned image |
-| `GET` | `/api/polygons/{id}/` | Retrieve one owned polygon |
-| `PATCH` | `/api/polygons/{id}/` | Update one owned polygon |
-| `DELETE` | `/api/polygons/{id}/` | Delete one owned polygon |
-
-Polygon points are stored as normalized values between `0` and `1`, allowing the frontend canvas to resize without moving annotations away from their intended image regions.
-
-Example request:
-
-```json
-{
-  "label": "Product",
-  "color": "#FF8A00",
-  "points": [
-    {"x": 0.12, "y": 0.18},
-    {"x": 0.74, "y": 0.20},
-    {"x": 0.58, "y": 0.82}
-  ]
-}
-```
-
-Validation rules:
-
-- At least three distinct points
-- Maximum 200 points per polygon
-- Every coordinate must be between `0` and `1`
-- Colors must use six-digit hexadecimal format
-- Images and polygons are available only to their owning user
-
-## Tests
-
-Run the current backend suite:
+Run the same checks used by CI:
 
 ```bash
+python manage.py check
+python manage.py makemigrations --check --dry-run
 python manage.py test apps.accounts apps.tasks apps.annotations
 ```
 
-The current suite covers authentication, task CRUD and reordering, image validation, multiple uploads, polygon validation and persistence, user isolation, and protected deletion.
+The current suite contains **49 tests** covering authentication, access control, task validation and reordering, image upload limits and cleanup, polygon validation, and user isolation.
 
-## Development workflow
+GitHub Actions runs these checks on every pull request and every push to `main`.
 
-The project is developed through focused branches and pull requests. Broader integration tests and deployment documentation are added in later focused branches.
+## Deployment
+
+The assignment can be hosted on a free PythonAnywhere web app with SQLite and local media storage. Follow [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the exact WSGI, environment, static, media, migration, and CORS steps.
+
+SQLite and filesystem uploads are appropriate for this small recruiter demo. A larger production system should use a managed relational database and durable object storage.
+
+## Architecture
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the request flow, application boundaries, data relationships, ordering transaction, annotation coordinate strategy, and security model.
+
+## Difficulties — the villains faced
+
+The main engineering challenges were:
+
+- introducing an email-first custom user model before application migrations;
+- keeping Kanban positions contiguous after drag-and-drop operations;
+- separating a task's board date from its deadline;
+- preserving polygon alignment across responsive image sizes;
+- validating uploaded image contents rather than trusting extensions;
+- enforcing ownership at every queryset boundary;
+- fitting image persistence into a free-tier deployment.
+
+The decisions and trade-offs are documented in [docs/CHALLENGES.md](docs/CHALLENGES.md).
 
 ## License
 
-Licensed under the MIT License.
+Released under the [MIT License](LICENSE).
