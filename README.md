@@ -8,8 +8,10 @@ Backend API for **MarkFlow**, a two-in-one productivity application combining da
 - Custom email-based user model
 - JWT access and refresh tokens
 - Authenticated current-user endpoint
-- Refresh-token blacklisting on logout
-- Demo-user management command
+- Date-based task creation, reading, editing, and deletion
+- User-owned tags attached through simple tag names
+- Task filtering by selected date
+- Priority, status, due-date, and board-position fields
 - SQLite development database
 - Public health-check endpoint
 
@@ -43,9 +45,7 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-> This branch introduces a custom user model. If you created `db.sqlite3` on the previous foundation branch, delete that local database before running migrations so Django can create the authentication tables cleanly.
-
-Apply migrations, create the demo user, and run the server:
+Apply migrations, create the demo user, and start the server:
 
 ```bash
 python manage.py migrate
@@ -70,30 +70,49 @@ Password: MarkFlow123!
 | `POST` | `/api/auth/logout/` | Blacklist a refresh token |
 | `GET` | `/api/health/` | Public hosting health check |
 
-Login request:
-
-```json
-{
-  "email": "demo@markflow.app",
-  "password": "MarkFlow123!"
-}
-```
-
 Authenticated requests use:
 
 ```text
 Authorization: Bearer <access-token>
 ```
 
-Run the authentication tests:
+## Task endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/tasks/?date=YYYY-MM-DD` | List the authenticated user's tasks for a date |
+| `POST` | `/api/tasks/` | Create a task |
+| `GET` | `/api/tasks/{id}/` | Read one owned task |
+| `PATCH` | `/api/tasks/{id}/` | Edit one owned task |
+| `DELETE` | `/api/tasks/{id}/` | Delete one owned task |
+
+Example task request:
+
+```json
+{
+  "title": "Design annotation toolbar",
+  "description": "Prepare the first toolbar iteration.",
+  "status": "todo",
+  "priority": "high",
+  "task_date": "2026-07-12",
+  "due_date": "2026-07-13",
+  "tag_names": ["Design", "Frontend"]
+}
+```
+
+Task ordering is stored through the `position` field. The dedicated drag-and-drop reorder operation is added in the next focused branch.
+
+## Tests
+
+Run the authentication and task tests:
 
 ```bash
-python manage.py test apps.accounts
+python manage.py test apps.accounts apps.tasks
 ```
 
 ## Development workflow
 
-The project is developed through focused branches and pull requests. Task APIs, image uploads, polygon annotations, broader tests, and deployment documentation are added separately.
+The project is developed through focused branches and pull requests. Task reordering, image uploads, polygon annotations, broader tests, and deployment documentation are added separately.
 
 ## License
 
