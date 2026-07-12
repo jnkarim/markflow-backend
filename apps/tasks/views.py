@@ -1,13 +1,16 @@
 from django.utils.dateparse import parse_date
-from rest_framework import viewsets
-from rest_framework.exceptions import ValidationError
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.response import Response
 
 from apps.tasks.models import Task
-from apps.tasks.serializers import TaskSerializer
+from apps.tasks.serializers import TaskReorderSerializer, TaskSerializer
+from apps.tasks.services import reorder_task
 
 
 class TaskViewSet(viewsets.ModelViewSet):
-    """Provide user-scoped CRUD operations for date-based tasks."""
+    """Provide user-scoped operations for date-based Kanban tasks."""
 
     serializer_class = TaskSerializer
 
@@ -38,3 +41,21 @@ class TaskViewSet(viewsets.ModelViewSet):
             status=task_status,
         ).count()
         serializer.save(position=next_position)
+
+    @action(detail=False, methods=("post",), url_path="reorder")
+    def reorder(self, request):
+        """Persist a drag-and-drop move and normalize affected columns."""
+
+        input_serializer = TaskReorderSerializer(data=request.data)
+        input_serializer.is_valid(raise_exception=True)
+
+        try:
+            task = reorder_task(
+                user=request.user,
+                **input_serializer.validated_data,
+            )
+        except Task.DoesNotExist as exc:
+            raise NotFound("Task not found.") from exc
+
+        output_serializer = self.get_serializer(task)
+        return Response(output_serializer.data, status=status.HTTP_200_OK)
