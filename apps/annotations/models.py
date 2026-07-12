@@ -33,3 +33,24 @@ class UploadedImage(models.Model):
 
     def __str__(self) -> str:
         return self.original_name
+
+
+class PolygonAnnotation(models.Model):
+    """A polygon stored as normalized coordinates for one uploaded image."""
+
+    image = models.ForeignKey(
+        UploadedImage,
+        on_delete=models.CASCADE,
+        related_name="polygons",
+    )
+    label = models.CharField(max_length=80, default="Region")
+    color = models.CharField(max_length=7, default="#FF8A00")
+    points = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("created_at", "id")
+
+    def __str__(self) -> str:
+        return f"{self.label} on {self.image.original_name}"
