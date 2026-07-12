@@ -12,6 +12,8 @@ Backend API for **MarkFlow**, a two-in-one productivity application combining da
 - User-owned tags attached through simple tag names
 - Task filtering by selected date
 - Priority, status, due-date, and board-position fields
+- Transaction-safe task reordering within and between Kanban columns
+- Automatic normalization of source and destination positions
 - SQLite development database
 - Public health-check endpoint
 
@@ -85,6 +87,7 @@ Authorization: Bearer <access-token>
 | `GET` | `/api/tasks/{id}/` | Read one owned task |
 | `PATCH` | `/api/tasks/{id}/` | Edit one owned task |
 | `DELETE` | `/api/tasks/{id}/` | Delete one owned task |
+| `POST` | `/api/tasks/reorder/` | Move a task within or between Kanban columns |
 
 Example task request:
 
@@ -100,7 +103,17 @@ Example task request:
 }
 ```
 
-Task ordering is stored through the `position` field. The dedicated drag-and-drop reorder operation is added in the next focused branch.
+Example reorder request:
+
+```json
+{
+  "task_id": 17,
+  "status": "in_progress",
+  "position": 1
+}
+```
+
+The reorder service locks the affected board rows inside a database transaction, moves the selected task, and rewrites both affected columns with contiguous zero-based positions.
 
 ## Tests
 
@@ -110,9 +123,11 @@ Run the authentication and task tests:
 python manage.py test apps.accounts apps.tasks
 ```
 
+The current suite covers authentication, task CRUD validation, date filtering, user isolation, same-column ordering, cross-column movement, position clamping, and invalid reorder requests.
+
 ## Development workflow
 
-The project is developed through focused branches and pull requests. Task reordering, image uploads, polygon annotations, broader tests, and deployment documentation are added separately.
+The project is developed through focused branches and pull requests. Image uploads, polygon annotations, broader tests, and deployment documentation are added separately.
 
 ## License
 

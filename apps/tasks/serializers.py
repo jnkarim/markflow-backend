@@ -90,3 +90,12 @@ class TaskSerializer(serializers.ModelSerializer):
         if tag_names is not None:
             self._set_tags(task, tag_names)
         return task
+
+
+class TaskReorderSerializer(serializers.Serializer):
+    """Validate a drag-and-drop task movement request."""
+
+    task_id = serializers.IntegerField(min_value=1)
+    status = serializers.ChoiceField(choices=Task.Status.choices)
+    position = serializers.IntegerField(min_value=0)
+
