@@ -10,15 +10,15 @@ class Command(BaseCommand):
         user, _ = User.objects.get_or_create(
             email="demo@markflow.app",
             defaults={
-                "first_name": "Alex",
-                "last_name": "Doyle",
+                "first_name": "Julker Nayeen",
+                "last_name": "Karim",
                 "is_active": True,
             },
         )
-        user.first_name = "Alex"
-        user.last_name = "Doyle"
+        user.first_name = "Julker Nayeen"
+        user.last_name = "Karim"
         user.is_active = True
-        user.set_password("MarkFlow123!")
+        user.set_password("1234abcd")
         user.save(update_fields=[
             "first_name",
             "last_name",
@@ -28,6 +28,6 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                "Demo account ready: demo@markflow.app / MarkFlow123!"
+                "Demo account ready: demo@markflow.app / 1234abcd"
             )
         )
